@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mines Predictor Ultimate</title>
+    <style>
+        body { background-color: #0b1124; color: white; font-family: 'Arial', sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; height: 100vh; overflow: hidden; }
+        .header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #151e34; box-sizing: border-box; }
+        .logo { font-size: 26px; font-weight: 900; font-style: italic; }
+        .logo span { color: #0066ff; }
+        .switch-btn { background: #0066ff; color: white; padding: 8px 15px; border-radius: 6px; font-size: 13px; border: none; font-weight: bold; cursor: pointer; }
+        .switch-btn.active { background: #f59e0b; color: #000; }
+        
+        .game-area { margin-top: 20px; background: #0f1629; padding: 12px; border-radius: 15px; border: 4px solid #242f4d; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .cell { width: 50px; height: 50px; background: linear-gradient(180deg, #18b5e9 0%, #0077b6 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .cell.opened { background: #090e1d; }
+        
+        .icon { width: 35px; height: 35px; opacity: 0; transform: scale(0); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .icon.show { opacity: 1; transform: scale(1); }
+
+        .footer-controls { margin-top: auto; margin-bottom: 20px; width: 90%; max-width: 350px; background: #151e34; padding: 20px; border-radius: 25px; display: flex; flex-direction: column; align-items: center; }
+        .selector { display: flex; align-items: center; gap: 40px; margin-bottom: 20px; user-select: none; }
+        .arrow { font-size: 24px; cursor: pointer; color: #0066ff; font-weight: bold; }
+        .val { text-align: center; font-size: 22px; font-weight: bold; min-width: 60px; }
+        .sub-text { font-size: 11px; opacity: 0.5; text-transform: uppercase; }
+
+        .btn-play { width: 100%; background: #0066ff; color: white; padding: 16px; border-radius: 12px; border: none; font-size: 18px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+        .btn-back { width: 100%; background: #b9041a; color: white; padding: 16px; border-radius: 12px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">1<span>WIN</span></div>
+        <button class="switch-btn" id="mode-toggle">Switch to All</button>
+    </div>
+
+    <div class="game-area">
+        <div id="status-label" style="text-align:center; font-size:12px; margin-bottom:10px; color:#0066ff; font-weight:bold;">MODE: SIGNALS</div>
+        <div class="grid" id="main-grid"></div>
+    </div>
+
+    <div class="footer-controls">
+        <div class="selector">
+            <span class="arrow" onclick="toggleTraps()">&#10094;</span>
+            <div class="val" onclick="toggleTraps()"><span id="trap-count">3</span><br><span class="sub-text">traps</span></div>
+            <span class="arrow" onclick="toggleTraps()">&#10095;</span>
+        </div>
+        <button class="btn-play" id="play-trigger">Play</button>
+        <button class="btn-back" onclick="location.reload()">Back</button>
+    </div>
+
+    <script>
+        const gridElement = document.getElementById('main-grid');
+        const playBtn = document.getElementById('play-trigger');
+        const modeBtn = document.getElementById('mode-toggle');
+        const trapDisplay = document.getElementById('trap-count');
+        const statusLabel = document.getElementById('status-label');
+        
+        let cellsArray = [];
+        let currentTraps = 3;
+        let isAllMode = false;
+
+        // Иконки
+        const starImg = "https://img.icons8.com/emoji/48/star-emoji.png";
+        const bombImg = "https://img.icons8.com/emoji/48/bomb-emoji.png";
+
+        // Создание сетки
+        for (let i = 0; i < 25; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            gridElement.appendChild(cell);
+            cellsArray.push(cell);
+        }
+
+        // Переключение количества ловушек (1 или 3)
+        function toggleTraps() {
+            currentTraps = (currentTraps === 3) ? 1 : 3;
+            trapDisplay.innerText = currentTraps;
+        }
+
+        // Переключение режима (Signals / All)
+        modeBtn.addEventListener('click', () => {
+            isAllMode = !isAllMode;
+            modeBtn.innerText = isAllMode ? "Switch to Signals" : "Switch to All";
+            modeBtn.classList.toggle('active');
+            statusLabel.innerText = isAllMode ? "MODE: REVEAL ALL" : "MODE: SIGNALS";
+            resetGrid();
+        });
+
+        function resetGrid() {
+            cellsArray.forEach(cell => {
+                cell.className = 'cell';
+                cell.innerHTML = '';
+            });
+        }
+
+async function startProcess() {
+            resetGrid();
+            
+            let positions = Array.from({length: 25}, (_, i) => i);
+            let bombPositions = [];
+            
+            if (isAllMode) {
+                // Выбираем места для бомб
+                while(bombPositions.length < currentTraps) {
+                    let r = Math.floor(Math.random() * 25);
+                    if(!bombPositions.includes(r)) bombPositions.push(r);
+                }
+                
+                // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+                // Открываем клетки по очереди с комфортной скоростью
+                for (let i = 0; i < 25; i++) {
+                    // Увеличили задержку до 150мс (было 50мс)
+                    await new Promise(r => setTimeout(r, 150)); 
+                    
+                    cellsArray[i].classList.add('opened');
+                    const isBomb = bombPositions.includes(i);
+                    
+                    // Вставляем иконку (бомба или звезда)
+                    cellsArray[i].innerHTML = `<img src="${isBomb ? bombImg : starImg}" class="icon">`;
+                    
+                    // Показываем иконку с небольшой анимацией
+                    const icon = cellsArray[i].querySelector('.icon');
+                    setTimeout(() => icon.classList.add('show'), 10);
+                }
+            } else {
+                // Режим SIGNALS остается прежним (медленным)
+                let signalPositions = [];
+                while(signalPositions.length < 5) {
+                    let r = Math.floor(Math.random() * 25);
+                    if(!signalPositions.includes(r)) signalPositions.push(r);
+                }
+                
+                for (let idx of signalPositions) {
+                    await new Promise(r => setTimeout(r, 600)); 
+                    cellsArray[idx].classList.add('opened');
+                    cellsArray[idx].innerHTML = `<img src="${starImg}" class="icon">`;
+                    setTimeout(() => cellsArray[idx].querySelector('.icon').classList.add('show'), 50);
+                }
+            }
+        }
+                
+     
+
+        playBtn.addEventListener('click', startProcess);
+    </script>
+</body>
+</html>
